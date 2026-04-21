@@ -310,24 +310,29 @@ with tab1:
     st.plotly_chart(fig_faixa, use_container_width=True)
 
     top_n = st.selectbox("Top N cidades", [30, 50, 100], index=0, key="top_n_cidades")
-    cidade_counts = df_filtrado['Cidade'].value_counts().head(top_n)
+    top_cidades = df_filtrado['Cidade'].value_counts().head(top_n).index.tolist()
+    df_top = df_filtrado[df_filtrado['Cidade'].isin(top_cidades)].copy()
+    cidade_faixa = (
+        df_top.groupby(['Cidade', 'Faixa Preço'], observed=True)
+        .size().reset_index(name='Quantidade')
+    )
+    total_por_cidade = df_filtrado['Cidade'].value_counts().head(top_n)
     altura_cidades = max(500, top_n * 20)
     fig_cidades = px.bar(
-        x=cidade_counts.values,
-        y=cidade_counts.index,
+        cidade_faixa,
+        x='Quantidade',
+        y='Cidade',
+        color='Faixa Preço',
         orientation='h',
-        title=f"Top {top_n} Cidades",
-        labels={'x': 'Quantidade', 'y': 'Cidade'},
-        color=cidade_counts.values,
-        color_continuous_scale='Viridis',
-        text_auto=True,
-        height=altura_cidades
+        title=f"Top {top_n} Cidades por Faixa de Preço",
+        barmode='stack',
+        height=altura_cidades,
+        color_discrete_sequence=px.colors.sequential.Plasma_r
     )
-    fig_cidades.update_traces(textposition='outside', textfont_size=14)
     fig_cidades.update_layout(
         yaxis={'categoryorder': 'total ascending'},
-        coloraxis_showscale=False,
-        xaxis_range=[0, cidade_counts.values.max() * 1.18]
+        xaxis_range=[0, total_por_cidade.max() * 1.12],
+        legend_title_text='Faixa'
     )
     st.plotly_chart(fig_cidades, use_container_width=True)
 
