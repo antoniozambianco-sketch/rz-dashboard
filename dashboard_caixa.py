@@ -74,144 +74,202 @@ if df is None or len(df) == 0:
     st.error("Erro ao carregar dados. Verifique a conexão com Google Sheets.")
     st.stop()
 
-# ==================== FILTROS ====================
+# ==================== LIMITES GLOBAIS (para defaults dos number_inputs) ====================
+
+preco_min_geral = int(df['Preço'].dropna().min())
+preco_max_geral = int(df['Preço'].dropna().max())
+aval_min_geral = int(df['Valor de avaliação'].dropna().min())
+aval_max_geral = int(df['Valor de avaliação'].dropna().max())
+area_terreno_min_geral = float(df['Área Terreno (m²)'].dropna().min() or 0)
+area_terreno_max_geral = float(df['Área Terreno (m²)'].dropna().max() or 0)
+area_priv_min_geral = float(df['Área Privativa (m²)'].dropna().min() or 0)
+area_priv_max_geral = float(df['Área Privativa (m²)'].dropna().max() or 0)
+
+# ==================== FILTROS (STAGED) ====================
+# Widgets escrevem em staged_*; "Salvar" copia staged → filtros_aplicados.
+# aplicar_filtros lê APENAS de filtros_aplicados → resultados só mudam ao salvar.
 
 st.sidebar.header("Filtros")
+
+def _ms(label, opcoes, key):
+    """Multiselect com botões Todos / Nenhum acima."""
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Todos", key=f"_all_{key}"):
+            st.session_state[key] = list(opcoes)
+    with c2:
+        if st.button("Nenhum", key=f"_none_{key}"):
+            st.session_state[key] = []
+    return st.multiselect(label, opcoes, key=key)
 
 # ===== LOCALIZAÇÃO =====
 with st.sidebar.expander("Localização", expanded=True):
     estados = sorted(df['UF'].dropna().unique().tolist())
-    estados_selecionados = st.multiselect("Estado (UF)", estados, default=[], key="multiselect_uf")
-
-    busca_cidade = st.text_input("Cidade (busca)", placeholder="ex: JOAO PESSOA", key="busca_cidade").strip().upper()
-
-    busca_bairro = st.text_input("Bairro (busca)", placeholder="ex: CENTRO", key="busca_bairro").strip().upper()
-
+    _ms("Estado (UF)", estados, "s_uf")
+    st.text_input("Cidade (busca)", placeholder="ex: JOAO PESSOA", key="s_cidade")
+    st.text_input("Bairro (busca)", placeholder="ex: CENTRO", key="s_bairro")
     st.divider()
-    apenas_end_nao_batido = st.checkbox("Apenas Endereços Não Batidos", value=False, key="checkbox_endraro")
+    st.checkbox("Apenas Endereços Não Batidos", value=False, key="s_end_nao_batido")
 
 # ===== ANÁLISE DE OPORTUNIDADE =====
 with st.sidebar.expander("Análise de Oportunidade", expanded=False):
     tiers = sorted([t for t in df['Tier'].dropna().unique().tolist() if t != ""])
-    tiers_selecionados = st.multiselect("Tier", tiers, default=[], key="multiselect_tier")
-
+    _ms("Tier", tiers, "s_tiers")
     acoes = sorted([a for a in df['Ação'].dropna().unique().tolist() if a != ""])
-    acoes_selecionadas = st.multiselect("Ação", acoes, default=[], key="multiselect_acao")
+    _ms("Ação", acoes, "s_acoes")
 
 # ===== PREÇO & AVALIAÇÃO =====
 with st.sidebar.expander("Preço & Avaliação", expanded=False):
     faixas = sorted([f for f in df['Faixa Preço'].dropna().unique().tolist() if f != ""])
-    faixas_selecionadas = st.multiselect("Faixa de Preço", faixas, default=[], key="multiselect_faixa")
-
-    preco_min_geral = int(df['Preço'].dropna().min())
-    preco_max_geral = int(df['Preço'].dropna().max())
-    col1, col2 = st.columns(2)
-    with col1:
-        preco_min_filtro = st.number_input("Preço Mín (R$)", value=preco_min_geral, step=1000, key="preco_min")
-    with col2:
-        preco_max_filtro = st.number_input("Preço Máx (R$)", value=preco_max_geral, step=1000, key="preco_max")
-
+    _ms("Faixa de Preço", faixas, "s_faixas")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.number_input("Preço Mín (R$)", value=preco_min_geral, step=1000, key="s_preco_min")
+    with c2:
+        st.number_input("Preço Máx (R$)", value=preco_max_geral, step=1000, key="s_preco_max")
     st.divider()
-    aval_min_geral = int(df['Valor de avaliação'].dropna().min())
-    aval_max_geral = int(df['Valor de avaliação'].dropna().max())
-    col1, col2 = st.columns(2)
-    with col1:
-        aval_min_filtro = st.number_input("Avaliação Mín (R$)", value=aval_min_geral, step=1000, key="aval_min")
-    with col2:
-        aval_max_filtro = st.number_input("Avaliação Máx (R$)", value=aval_max_geral, step=1000, key="aval_max")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.number_input("Avaliação Mín (R$)", value=aval_min_geral, step=1000, key="s_aval_min")
+    with c2:
+        st.number_input("Avaliação Máx (R$)", value=aval_max_geral, step=1000, key="s_aval_max")
 
 # ===== CARACTERÍSTICAS =====
 with st.sidebar.expander("Características", expanded=False):
     tipos = sorted([t for t in df['Tipo'].dropna().unique().tolist() if t != ""])
-    tipos_selecionados = st.multiselect("Tipo de Imóvel", tipos, default=[], key="multiselect_tipo")
-
+    _ms("Tipo de Imóvel", tipos, "s_tipos")
     quartos_list = sorted([q for q in df['Quartos'].dropna().unique().tolist()])
-    quartos_selecionados = st.multiselect("Quartos", quartos_list, default=[], key="multiselect_quartos")
-
+    _ms("Quartos", quartos_list, "s_quartos")
     andares_list = sorted([a for a in df['Andar'].dropna().unique().tolist()])
-    andares_selecionados = st.multiselect("Andar", andares_list, default=[], key="multiselect_andar")
-
-    tem_varanda = st.checkbox("Tem Varanda", value=False, key="checkbox_varanda")
-    tem_vaga = st.checkbox("Tem Vaga", value=False, key="checkbox_vaga")
-
+    _ms("Andar", andares_list, "s_andares")
+    st.checkbox("Tem Varanda", value=False, key="s_varanda")
+    st.checkbox("Tem Vaga", value=False, key="s_vaga")
     st.divider()
-    area_terreno_min_geral = float(df['Área Terreno (m²)'].dropna().min() or 0)
-    area_terreno_max_geral = float(df['Área Terreno (m²)'].dropna().max() or 0)
-    col1, col2 = st.columns(2)
-    with col1:
-        area_terreno_min_filtro = st.number_input("Terreno Mín (m²)", value=area_terreno_min_geral, step=10.0, key="area_terreno_min")
-    with col2:
-        area_terreno_max_filtro = st.number_input("Terreno Máx (m²)", value=area_terreno_max_geral, step=10.0, key="area_terreno_max")
-
-    area_priv_min_geral = float(df['Área Privativa (m²)'].dropna().min() or 0)
-    area_priv_max_geral = float(df['Área Privativa (m²)'].dropna().max() or 0)
-    col1, col2 = st.columns(2)
-    with col1:
-        area_priv_min_filtro = st.number_input("Privativa Mín (m²)", value=area_priv_min_geral, step=10.0, key="area_priv_min")
-    with col2:
-        area_priv_max_filtro = st.number_input("Privativa Máx (m²)", value=area_priv_max_geral, step=10.0, key="area_priv_max")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.number_input("Terreno Mín (m²)", value=area_terreno_min_geral, step=10.0, key="s_at_min")
+    with c2:
+        st.number_input("Terreno Máx (m²)", value=area_terreno_max_geral, step=10.0, key="s_at_max")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.number_input("Privativa Mín (m²)", value=area_priv_min_geral, step=10.0, key="s_ap_min")
+    with c2:
+        st.number_input("Privativa Máx (m²)", value=area_priv_max_geral, step=10.0, key="s_ap_max")
 
 # ===== MODALIDADE & PAGAMENTO =====
 with st.sidebar.expander("Modalidade & Pagamento", expanded=False):
     if 'Modalidade de venda' in df.columns:
         modalidades = sorted([m for m in df['Modalidade de venda'].dropna().unique().tolist() if m != ""])
-        modalidades_selecionadas = st.multiselect("Modalidade de Venda", modalidades, default=[], key="multiselect_modalidade")
-    else:
-        modalidades_selecionadas = []
+        _ms("Modalidade de Venda", modalidades, "s_modalidades")
+    st.checkbox("Apenas Financiáveis", value=False, key="s_financiavel")
 
-    apenas_financiavel = st.checkbox("Apenas Financiáveis", value=False, key="checkbox_financ")
-
-# ===== LIMPAR FILTROS =====
+# ===== SALVAR / LIMPAR =====
 st.sidebar.divider()
-if st.sidebar.button("Limpar Todos os Filtros"):
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.rerun()
+c1, c2 = st.sidebar.columns(2)
+with c1:
+    if st.button("💾 Salvar", type="primary", use_container_width=True):
+        st.session_state['filtros_aplicados'] = {
+            'uf':            st.session_state.get('s_uf', []),
+            'cidade':        st.session_state.get('s_cidade', '').strip().upper(),
+            'bairro':        st.session_state.get('s_bairro', '').strip().upper(),
+            'end_nao_batido': st.session_state.get('s_end_nao_batido', False),
+            'tiers':         st.session_state.get('s_tiers', []),
+            'acoes':         st.session_state.get('s_acoes', []),
+            'faixas':        st.session_state.get('s_faixas', []),
+            'preco_min':     st.session_state.get('s_preco_min', preco_min_geral),
+            'preco_max':     st.session_state.get('s_preco_max', preco_max_geral),
+            'aval_min':      st.session_state.get('s_aval_min', aval_min_geral),
+            'aval_max':      st.session_state.get('s_aval_max', aval_max_geral),
+            'tipos':         st.session_state.get('s_tipos', []),
+            'quartos':       st.session_state.get('s_quartos', []),
+            'andares':       st.session_state.get('s_andares', []),
+            'varanda':       st.session_state.get('s_varanda', False),
+            'vaga':          st.session_state.get('s_vaga', False),
+            'at_min':        st.session_state.get('s_at_min', area_terreno_min_geral),
+            'at_max':        st.session_state.get('s_at_max', area_terreno_max_geral),
+            'ap_min':        st.session_state.get('s_ap_min', area_priv_min_geral),
+            'ap_max':        st.session_state.get('s_ap_max', area_priv_max_geral),
+            'modalidades':   st.session_state.get('s_modalidades', []),
+            'financiavel':   st.session_state.get('s_financiavel', False),
+        }
+        st.rerun()
+with c2:
+    if st.button("🗑 Limpar", use_container_width=True):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
 
 # ==================== APLICAR FILTROS ====================
+# Lê apenas de filtros_aplicados (estado salvo), nunca dos widgets diretamente.
+
+fa = st.session_state.get('filtros_aplicados', {})
+
+def _fa(key, default):
+    return fa.get(key, default)
 
 def aplicar_filtros(df_base, incluir_acao=True):
     d = df_base.copy()
 
-    if estados_selecionados:
-        d = d[d['UF'].isin(estados_selecionados)]
-    if busca_cidade:
-        d = d[d['Cidade'].str.upper().str.contains(busca_cidade, na=False)]
-    if busca_bairro:
-        d = d[d['Bairro'].str.upper().str.contains(busca_bairro, na=False)]
-    if apenas_end_nao_batido:
+    uf = _fa('uf', [])
+    cidade = _fa('cidade', '')
+    bairro = _fa('bairro', '')
+    if uf:
+        d = d[d['UF'].isin(uf)]
+    if cidade:
+        d = d[d['Cidade'].str.upper().str.contains(cidade, na=False)]
+    if bairro:
+        d = d[d['Bairro'].str.upper().str.contains(bairro, na=False)]
+    if _fa('end_nao_batido', False):
         d = d[d['Endereço não batido'] == 'Sim']
-    if tiers_selecionados:
-        d = d[d['Tier'].isin(tiers_selecionados)]
-    if incluir_acao and acoes_selecionadas:
-        d = d[d['Ação'].isin(acoes_selecionadas)]
-    if faixas_selecionadas:
-        d = d[d['Faixa Preço'].isin(faixas_selecionadas)]
-    if tipos_selecionados:
-        d = d[d['Tipo'].isin(tipos_selecionados)]
-    if quartos_selecionados:
-        d = d[d['Quartos'].isin(quartos_selecionados)]
-    if andares_selecionados:
-        d = d[d['Andar'].isin(andares_selecionados)]
-    if tem_varanda:
+
+    tiers_sel = _fa('tiers', [])
+    acoes_sel = _fa('acoes', [])
+    if tiers_sel:
+        d = d[d['Tier'].isin(tiers_sel)]
+    if incluir_acao and acoes_sel:
+        d = d[d['Ação'].isin(acoes_sel)]
+
+    faixas_sel = _fa('faixas', [])
+    if faixas_sel:
+        d = d[d['Faixa Preço'].isin(faixas_sel)]
+
+    preco_min = _fa('preco_min', preco_min_geral)
+    preco_max = _fa('preco_max', preco_max_geral)
+    aval_min  = _fa('aval_min', aval_min_geral)
+    aval_max  = _fa('aval_max', aval_max_geral)
+    d = d[(d['Preço'] >= preco_min) & (d['Preço'] <= preco_max)]
+    d = d[(d['Valor de avaliação'] >= aval_min) & (d['Valor de avaliação'] <= aval_max)]
+
+    tipos_sel   = _fa('tipos', [])
+    quartos_sel = _fa('quartos', [])
+    andares_sel = _fa('andares', [])
+    if tipos_sel:
+        d = d[d['Tipo'].isin(tipos_sel)]
+    if quartos_sel:
+        d = d[d['Quartos'].isin(quartos_sel)]
+    if andares_sel:
+        d = d[d['Andar'].isin(andares_sel)]
+    if _fa('varanda', False):
         d = d[d['Varanda'] == 'Sim']
-    if tem_vaga:
+    if _fa('vaga', False):
         d = d[d['Vaga'] == 'Sim']
-    if modalidades_selecionadas:
-        d = d[d['Modalidade de venda'].isin(modalidades_selecionadas)]
-    if apenas_financiavel:
-        d = d[d['Financiamento'] == 'Sim']
 
-    d = d[(d['Preço'] >= preco_min_filtro) & (d['Preço'] <= preco_max_filtro)]
-    d = d[(d['Valor de avaliação'] >= aval_min_filtro) & (d['Valor de avaliação'] <= aval_max_filtro)]
-
-    if area_terreno_min_filtro > area_terreno_min_geral or area_terreno_max_filtro < area_terreno_max_geral:
+    at_min = _fa('at_min', area_terreno_min_geral)
+    at_max = _fa('at_max', area_terreno_max_geral)
+    ap_min = _fa('ap_min', area_priv_min_geral)
+    ap_max = _fa('ap_max', area_priv_max_geral)
+    if at_min > area_terreno_min_geral or at_max < area_terreno_max_geral:
         d = d[d['Área Terreno (m²)'].isna() |
-              ((d['Área Terreno (m²)'] >= area_terreno_min_filtro) & (d['Área Terreno (m²)'] <= area_terreno_max_filtro))]
-
-    if area_priv_min_filtro > area_priv_min_geral or area_priv_max_filtro < area_priv_max_geral:
+              ((d['Área Terreno (m²)'] >= at_min) & (d['Área Terreno (m²)'] <= at_max))]
+    if ap_min > area_priv_min_geral or ap_max < area_priv_max_geral:
         d = d[d['Área Privativa (m²)'].isna() |
-              ((d['Área Privativa (m²)'] >= area_priv_min_filtro) & (d['Área Privativa (m²)'] <= area_priv_max_filtro))]
+              ((d['Área Privativa (m²)'] >= ap_min) & (d['Área Privativa (m²)'] <= ap_max))]
+
+    modal_sel = _fa('modalidades', [])
+    if modal_sel:
+        d = d[d['Modalidade de venda'].isin(modal_sel)]
+    if _fa('financiavel', False):
+        d = d[d['Financiamento'] == 'Sim']
 
     return d
 
@@ -277,7 +335,12 @@ with tab1:
         text_auto=True,
         height=altura_cidades
     )
-    fig_cidades.update_layout(yaxis={'categoryorder': 'total ascending'}, coloraxis_showscale=False)
+    fig_cidades.update_traces(textposition='outside', textfont_size=14)
+    fig_cidades.update_layout(
+        yaxis={'categoryorder': 'total ascending'},
+        coloraxis_showscale=False,
+        xaxis_range=[0, cidade_counts.values.max() * 1.18]
+    )
     st.plotly_chart(fig_cidades, use_container_width=True)
 
 # ========== TAB 2: OPORTUNIDADES ==========
