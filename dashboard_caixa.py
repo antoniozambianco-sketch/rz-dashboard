@@ -296,17 +296,24 @@ with tab1:
 
     st.divider()
 
+    # Paleta fixa por faixa — mesmas cores nos 2 gráficos
+    todas_faixas = sorted([f for f in df['Faixa Preço'].dropna().unique() if f != ""])
+    _plasma = px.colors.sequential.Plasma_r
+    _step = (len(_plasma) - 1) / max(len(todas_faixas) - 1, 1)
+    FAIXA_CORES = {f: _plasma[round(i * _step)] for i, f in enumerate(todas_faixas)}
+
     faixa_counts = df_filtrado['Faixa Preço'].value_counts().sort_index()
     fig_faixa = px.bar(
         x=faixa_counts.index,
         y=faixa_counts.values,
         title="Distribuição por Faixa de Preço",
         labels={'x': 'Faixa', 'y': 'Quantidade'},
-        color=faixa_counts.values,
-        color_continuous_scale='Plasma',
-        text_auto=True
+        color=faixa_counts.index,
+        color_discrete_map=FAIXA_CORES,
+        text_auto=True,
+        category_orders={'color': todas_faixas}
     )
-    fig_faixa.update_layout(showlegend=False, coloraxis_showscale=False)
+    fig_faixa.update_layout(showlegend=False)
     st.plotly_chart(fig_faixa, use_container_width=True)
 
     top_n = st.selectbox("Top N cidades", [30, 50, 100], index=0, key="top_n_cidades")
@@ -318,7 +325,7 @@ with tab1:
     )
     total_por_cidade = df_filtrado['Cidade'].value_counts().head(top_n)
     faixas_order = sorted(cidade_faixa['Faixa Preço'].dropna().unique().tolist())
-    altura_cidades = max(500, top_n * 20)
+    altura_cidades = top_n * 28
     fig_cidades = px.bar(
         cidade_faixa,
         x='Quantidade',
@@ -328,7 +335,7 @@ with tab1:
         title=f"Top {top_n} Cidades por Faixa de Preço",
         barmode='stack',
         height=altura_cidades,
-        color_discrete_sequence=px.colors.sequential.Plasma_r,
+        color_discrete_map=FAIXA_CORES,
         category_orders={'Faixa Preço': faixas_order}
     )
     for cidade, total in total_por_cidade.items():
@@ -339,7 +346,7 @@ with tab1:
             font=dict(size=13)
         )
     fig_cidades.update_layout(
-        yaxis={'categoryorder': 'total ascending'},
+        yaxis={'categoryorder': 'total ascending', 'tickmode': 'linear'},
         xaxis_range=[0, total_por_cidade.max() * 1.18],
         legend_title_text='Faixa'
     )
