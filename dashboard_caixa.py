@@ -317,6 +317,7 @@ with tab1:
         .size().reset_index(name='Quantidade')
     )
     total_por_cidade = df_filtrado['Cidade'].value_counts().head(top_n)
+    faixas_order = sorted(cidade_faixa['Faixa Preço'].dropna().unique().tolist())
     altura_cidades = max(500, top_n * 20)
     fig_cidades = px.bar(
         cidade_faixa,
@@ -327,11 +328,19 @@ with tab1:
         title=f"Top {top_n} Cidades por Faixa de Preço",
         barmode='stack',
         height=altura_cidades,
-        color_discrete_sequence=px.colors.sequential.Plasma_r
+        color_discrete_sequence=px.colors.sequential.Plasma_r,
+        category_orders={'Faixa Preço': faixas_order}
     )
+    for cidade, total in total_por_cidade.items():
+        fig_cidades.add_annotation(
+            x=total, y=cidade,
+            text=f"<b>{total:,}</b>",
+            showarrow=False, xanchor='left', xshift=6,
+            font=dict(size=13)
+        )
     fig_cidades.update_layout(
         yaxis={'categoryorder': 'total ascending'},
-        xaxis_range=[0, total_por_cidade.max() * 1.12],
+        xaxis_range=[0, total_por_cidade.max() * 1.18],
         legend_title_text='Faixa'
     )
     st.plotly_chart(fig_cidades, use_container_width=True)
