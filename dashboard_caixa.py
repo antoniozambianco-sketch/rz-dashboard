@@ -250,105 +250,117 @@ with tab1:
 
     st.divider()
 
-    col1, col2 = st.columns(2)
+    faixa_counts = df_filtrado['Faixa Preço'].value_counts().sort_index()
+    fig_faixa = px.bar(
+        x=faixa_counts.index,
+        y=faixa_counts.values,
+        title="Distribuição por Faixa de Preço",
+        labels={'x': 'Faixa', 'y': 'Quantidade'},
+        color=faixa_counts.values,
+        color_continuous_scale='Plasma',
+        text_auto=True
+    )
+    fig_faixa.update_layout(showlegend=False, coloraxis_showscale=False)
+    st.plotly_chart(fig_faixa, use_container_width=True)
 
-    with col1:
-        faixa_counts = df_filtrado['Faixa Preço'].value_counts().sort_index()
-        fig_faixa = px.bar(
-            x=faixa_counts.index,
-            y=faixa_counts.values,
-            title="Distribuição por Faixa de Preço",
-            labels={'x': 'Faixa', 'y': 'Quantidade'},
-            color=faixa_counts.values,
-            color_continuous_scale='Plasma',
-            text_auto=True
-        )
-        fig_faixa.update_layout(showlegend=False, coloraxis_showscale=False)
-        st.plotly_chart(fig_faixa, use_container_width=True)
-
-    with col2:
-        top_n = st.selectbox("Top N cidades", [30, 50, 100], index=0, key="top_n_cidades")
-        cidade_counts = df_filtrado['Cidade'].value_counts().head(top_n)
-        fig_cidades = px.bar(
-            x=cidade_counts.values,
-            y=cidade_counts.index,
-            orientation='h',
-            title=f"Top {top_n} Cidades",
-            labels={'x': 'Quantidade', 'y': 'Cidade'},
-            color=cidade_counts.values,
-            color_continuous_scale='Viridis',
-            text_auto=True
-        )
-        fig_cidades.update_layout(yaxis={'categoryorder': 'total ascending'}, coloraxis_showscale=False)
-        st.plotly_chart(fig_cidades, use_container_width=True)
+    top_n = st.selectbox("Top N cidades", [30, 50, 100], index=0, key="top_n_cidades")
+    cidade_counts = df_filtrado['Cidade'].value_counts().head(top_n)
+    altura_cidades = max(500, top_n * 20)
+    fig_cidades = px.bar(
+        x=cidade_counts.values,
+        y=cidade_counts.index,
+        orientation='h',
+        title=f"Top {top_n} Cidades",
+        labels={'x': 'Quantidade', 'y': 'Cidade'},
+        color=cidade_counts.values,
+        color_continuous_scale='Viridis',
+        text_auto=True,
+        height=altura_cidades
+    )
+    fig_cidades.update_layout(yaxis={'categoryorder': 'total ascending'}, coloraxis_showscale=False)
+    st.plotly_chart(fig_cidades, use_container_width=True)
 
 # ========== TAB 2: OPORTUNIDADES ==========
 with tab2:
-
-    col1, col2 = st.columns(2)
+    colunas_ord_op = ['Preço', 'Valor de avaliação', 'Desconto', 'Área Privativa (m²)', 'Quartos', 'Andar']
 
     # --- APROFUNDAR ---
-    with col1:
-        aprofundar_df = df_oportunidades[df_oportunidades['Ação'] == 'aprofundar'].copy()
-        aprofundar_df = aprofundar_df.sort_values('Preço', ascending=True)
+    aprofundar_df = df_oportunidades[df_oportunidades['Ação'] == 'aprofundar'].copy()
 
-        preco_apr = aprofundar_df['Preço'].dropna()
-        preco_apr = preco_apr[preco_apr > 0]
+    preco_apr = aprofundar_df['Preço'].dropna()
+    preco_apr = preco_apr[preco_apr > 0]
 
-        st.subheader(f"Aprofundar ({len(aprofundar_df):,})")
-        m1, m2 = st.columns(2)
-        with m1:
-            st.metric("Preço Médio", f"R$ {preco_apr.mean():,.0f}" if len(preco_apr) > 0 else "N/A")
-        with m2:
-            st.metric("Preço Máx", f"R$ {preco_apr.max():,.0f}" if len(preco_apr) > 0 else "N/A")
+    st.subheader(f"Aprofundar ({len(aprofundar_df):,})")
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric("Preço Médio", f"R$ {preco_apr.mean():,.0f}" if len(preco_apr) > 0 else "N/A")
+    with m2:
+        st.metric("Preço Máx", f"R$ {preco_apr.max():,.0f}" if len(preco_apr) > 0 else "N/A")
+    with m3:
+        ord_apr_col = st.selectbox("Ordenar por", colunas_ord_op, index=0, key="ord_apr_col")
+    with m4:
+        ord_apr_asc = st.selectbox("Ordem", ["Crescente", "Decrescente"], index=0, key="ord_apr_asc")
 
-        if len(aprofundar_df) > 0:
-            st.dataframe(
-                aprofundar_df,
-                use_container_width=True,
-                height=600,
-                hide_index=True,
-                column_config={
-                    "Link de acesso": st.column_config.LinkColumn("Link", display_text="🔗 Abrir")
-                }
-            )
-        else:
-            st.info("Nenhum imóvel para aprofundar com os filtros atuais.")
+    aprofundar_df = aprofundar_df.sort_values(ord_apr_col, ascending=(ord_apr_asc == "Crescente"))
+
+    if len(aprofundar_df) > 0:
+        st.dataframe(
+            aprofundar_df,
+            use_container_width=True,
+            height=600,
+            hide_index=True,
+            column_config={"Link de acesso": st.column_config.LinkColumn("Link", display_text="🔗 Abrir")}
+        )
+    else:
+        st.info("Nenhum imóvel para aprofundar com os filtros atuais.")
+
+    st.divider()
 
     # --- ACOMPANHAR ---
-    with col2:
-        acompanhar_df = df_oportunidades[df_oportunidades['Ação'] == 'acompanhar'].copy()
-        acompanhar_df = acompanhar_df.sort_values('Preço', ascending=True)
+    acompanhar_df = df_oportunidades[df_oportunidades['Ação'] == 'acompanhar'].copy()
 
-        preco_aco = acompanhar_df['Preço'].dropna()
-        preco_aco = preco_aco[preco_aco > 0]
+    preco_aco = acompanhar_df['Preço'].dropna()
+    preco_aco = preco_aco[preco_aco > 0]
 
-        st.subheader(f"Acompanhar ({len(acompanhar_df):,})")
-        m1, m2 = st.columns(2)
-        with m1:
-            st.metric("Preço Médio", f"R$ {preco_aco.mean():,.0f}" if len(preco_aco) > 0 else "N/A")
-        with m2:
-            st.metric("Preço Máx", f"R$ {preco_aco.max():,.0f}" if len(preco_aco) > 0 else "N/A")
+    st.subheader(f"Acompanhar ({len(acompanhar_df):,})")
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric("Preço Médio", f"R$ {preco_aco.mean():,.0f}" if len(preco_aco) > 0 else "N/A")
+    with m2:
+        st.metric("Preço Máx", f"R$ {preco_aco.max():,.0f}" if len(preco_aco) > 0 else "N/A")
+    with m3:
+        ord_aco_col = st.selectbox("Ordenar por", colunas_ord_op, index=0, key="ord_aco_col")
+    with m4:
+        ord_aco_asc = st.selectbox("Ordem", ["Crescente", "Decrescente"], index=0, key="ord_aco_asc")
 
-        if len(acompanhar_df) > 0:
-            st.dataframe(
-                acompanhar_df,
-                use_container_width=True,
-                height=600,
-                hide_index=True,
-                column_config={
-                    "Link de acesso": st.column_config.LinkColumn("Link", display_text="🔗 Abrir")
-                }
-            )
-        else:
-            st.info("Nenhum imóvel para acompanhar com os filtros atuais.")
+    acompanhar_df = acompanhar_df.sort_values(ord_aco_col, ascending=(ord_aco_asc == "Crescente"))
+
+    if len(acompanhar_df) > 0:
+        st.dataframe(
+            acompanhar_df,
+            use_container_width=True,
+            height=600,
+            hide_index=True,
+            column_config={"Link de acesso": st.column_config.LinkColumn("Link", display_text="🔗 Abrir")}
+        )
+    else:
+        st.info("Nenhum imóvel para acompanhar com os filtros atuais.")
 
 # ========== TAB 3: DADOS ==========
 with tab3:
     st.subheader(f"Tabela Completa — {len(df_filtrado):,} imóveis")
 
+    colunas_ord_dados = ['Preço', 'Valor de avaliação', 'Desconto', 'Área Privativa (m²)', 'Área Terreno (m²)', 'Quartos', 'Andar', 'Cidade', 'Bairro', 'Tipo', 'Tier']
+    c1, c2 = st.columns(2)
+    with c1:
+        ord_dados_col = st.selectbox("Ordenar por", colunas_ord_dados, index=0, key="ord_dados_col")
+    with c2:
+        ord_dados_asc = st.selectbox("Ordem", ["Crescente", "Decrescente"], index=0, key="ord_dados_asc")
+
+    df_dados_ord = df_filtrado.sort_values(ord_dados_col, ascending=(ord_dados_asc == "Crescente"))
+
     st.dataframe(
-        df_filtrado,
+        df_dados_ord,
         use_container_width=True,
         height=700,
         hide_index=True,
