@@ -122,17 +122,11 @@ with st.sidebar.expander("Análise de Oportunidade", expanded=False):
 with st.sidebar.expander("Preço & Avaliação", expanded=False):
     faixas = sorted([f for f in df['Faixa Preço'].dropna().unique().tolist() if f != ""])
     _ms("Faixa de Preço", faixas, "s_faixas")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.number_input("Preço Mín (R$)", value=preco_min_geral, step=1000, key="s_preco_min")
-    with c2:
-        st.number_input("Preço Máx (R$)", value=preco_max_geral, step=1000, key="s_preco_max")
+    st.number_input("Preço Mín (R$)", value=preco_min_geral, step=1000, key="s_preco_min")
+    st.number_input("Preço Máx (R$)", value=preco_max_geral, step=1000, key="s_preco_max")
     st.divider()
-    c1, c2 = st.columns(2)
-    with c1:
-        st.number_input("Avaliação Mín (R$)", value=aval_min_geral, step=1000, key="s_aval_min")
-    with c2:
-        st.number_input("Avaliação Máx (R$)", value=aval_max_geral, step=1000, key="s_aval_max")
+    st.number_input("Avaliação Mín (R$)", value=aval_min_geral, step=1000, key="s_aval_min")
+    st.number_input("Avaliação Máx (R$)", value=aval_max_geral, step=1000, key="s_aval_max")
 
 # ===== CARACTERÍSTICAS =====
 with st.sidebar.expander("Características", expanded=False):
@@ -145,16 +139,10 @@ with st.sidebar.expander("Características", expanded=False):
     st.checkbox("Tem Varanda", value=False, key="s_varanda")
     st.checkbox("Tem Vaga", value=False, key="s_vaga")
     st.divider()
-    c1, c2 = st.columns(2)
-    with c1:
-        st.number_input("Terreno Mín (m²)", value=area_terreno_min_geral, step=10.0, key="s_at_min")
-    with c2:
-        st.number_input("Terreno Máx (m²)", value=area_terreno_max_geral, step=10.0, key="s_at_max")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.number_input("Privativa Mín (m²)", value=area_priv_min_geral, step=10.0, key="s_ap_min")
-    with c2:
-        st.number_input("Privativa Máx (m²)", value=area_priv_max_geral, step=10.0, key="s_ap_max")
+    st.number_input("Terreno Mín (m²)", value=area_terreno_min_geral, step=10.0, key="s_at_min")
+    st.number_input("Terreno Máx (m²)", value=area_terreno_max_geral, step=10.0, key="s_at_max")
+    st.number_input("Privativa Mín (m²)", value=area_priv_min_geral, step=10.0, key="s_ap_min")
+    st.number_input("Privativa Máx (m²)", value=area_priv_max_geral, step=10.0, key="s_ap_max")
 
 # ===== MODALIDADE & PAGAMENTO =====
 with st.sidebar.expander("Modalidade & Pagamento", expanded=False):
