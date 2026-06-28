@@ -40,7 +40,21 @@ def convert_br_to_float(value):
     except:
         return None
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
+def load_ultima_atualizacao():
+    try:
+        client = get_sheets_client()
+        spreadsheet = client.open_by_key("162QLT4L9eg0Q5AV63th88OGeow_12YlAWOpwn-UOLMY")
+        sheet_meta = spreadsheet.worksheet("METADATA")
+        dados = sheet_meta.get_all_values()
+        for row in dados[1:]:
+            if len(row) >= 2 and row[0] == 'ultima_atualizacao':
+                return row[1]
+        return "Desconhecida"
+    except Exception:
+        return "Desconhecida"
+
+@st.cache_data(ttl=300)
 def load_data():
     try:
         client = get_sheets_client()
@@ -65,8 +79,10 @@ def load_data():
 
 # ==================== HEADER ====================
 
+ultima_atualizacao = load_ultima_atualizacao()
+
 st.title("Dashboard Caixa Econômica")
-st.markdown("Imóveis para Leilão — Dados ao vivo")
+st.markdown(f"Imóveis para Leilão — Dados ao vivo &nbsp;|&nbsp; 🕐 **Última atualização dos dados: {ultima_atualizacao}**")
 
 df = load_data()
 
@@ -451,4 +467,4 @@ with tab3:
 
 # ==================== FOOTER ====================
 st.divider()
-st.caption(f"Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} | Cache: 1h")
+st.caption(f"Dados de: {ultima_atualizacao} | Cache: 1h")
