@@ -127,13 +127,6 @@ with st.sidebar.expander("Localização", expanded=True):
     st.divider()
     st.checkbox("Apenas Endereços Não Batidos", value=False, key="s_end_nao_batido")
 
-# ===== ANÁLISE DE OPORTUNIDADE =====
-with st.sidebar.expander("Análise de Oportunidade", expanded=False):
-    tiers = sorted([t for t in df['Tier'].dropna().unique().tolist() if t != ""])
-    _ms("Tier", tiers, "s_tiers")
-    acoes = sorted([a for a in df['Ação'].dropna().unique().tolist() if a != ""])
-    _ms("Ação", acoes, "s_acoes")
-
 # ===== PREÇO & AVALIAÇÃO =====
 with st.sidebar.expander("Preço & Avaliação", expanded=False):
     faixas = sorted([f for f in df['Faixa Preço'].dropna().unique().tolist() if f != ""])
@@ -177,8 +170,6 @@ with c1:
             'cidade':        st.session_state.get('s_cidade', '').strip().upper(),
             'bairro':        st.session_state.get('s_bairro', '').strip().upper(),
             'end_nao_batido': st.session_state.get('s_end_nao_batido', False),
-            'tiers':         st.session_state.get('s_tiers', []),
-            'acoes':         st.session_state.get('s_acoes', []),
             'faixas':        st.session_state.get('s_faixas', []),
             'preco_min':     st.session_state.get('s_preco_min', preco_min_geral),
             'preco_max':     st.session_state.get('s_preco_max', preco_max_geral),
@@ -211,7 +202,7 @@ fa = st.session_state.get('filtros_aplicados', {})
 def _fa(key, default):
     return fa.get(key, default)
 
-def aplicar_filtros(df_base, incluir_acao=True):
+def aplicar_filtros(df_base):
     d = df_base.copy()
 
     uf = _fa('uf', [])
@@ -225,13 +216,6 @@ def aplicar_filtros(df_base, incluir_acao=True):
         d = d[d['Bairro'].str.upper().str.contains(bairro, na=False)]
     if _fa('end_nao_batido', False):
         d = d[d['Endereço não batido'] == 'Sim']
-
-    tiers_sel = _fa('tiers', [])
-    acoes_sel = _fa('acoes', [])
-    if tiers_sel:
-        d = d[d['Tier'].isin(tiers_sel)]
-    if incluir_acao and acoes_sel:
-        d = d[d['Ação'].isin(acoes_sel)]
 
     faixas_sel = _fa('faixas', [])
     if faixas_sel:
@@ -277,14 +261,13 @@ def aplicar_filtros(df_base, incluir_acao=True):
 
     return d
 
-df_filtrado = aplicar_filtros(df, incluir_acao=True)
-df_oportunidades = aplicar_filtros(df, incluir_acao=False)
+df_filtrado = aplicar_filtros(df)
 
 st.sidebar.markdown(f"**Resultados: {len(df_filtrado):,} imóveis**")
 
 # ==================== ABAS ====================
 
-tab1, tab2, tab3 = st.tabs(["Geral", "Oportunidades", "Dados"])
+tab1, tab3 = st.tabs(["Geral", "Dados"])
 
 # ========== TAB 1: GERAL ==========
 with tab1:
@@ -367,72 +350,6 @@ with tab1:
         legend_title_text='Faixa'
     )
     st.plotly_chart(fig_cidades, use_container_width=True)
-
-# ========== TAB 2: OPORTUNIDADES ==========
-with tab2:
-    colunas_ord_op = ['Preço', 'Valor de avaliação', 'Desconto', 'Área Privativa (m²)', 'Quartos', 'Andar']
-
-    # --- APROFUNDAR ---
-    aprofundar_df = df_oportunidades[df_oportunidades['Ação'] == 'aprofundar'].copy()
-
-    preco_apr = aprofundar_df['Preço'].dropna()
-    preco_apr = preco_apr[preco_apr > 0]
-
-    st.subheader(f"Aprofundar ({len(aprofundar_df):,})")
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.metric("Preço Médio", f"R$ {preco_apr.mean():,.0f}" if len(preco_apr) > 0 else "N/A")
-    with m2:
-        st.metric("Preço Máx", f"R$ {preco_apr.max():,.0f}" if len(preco_apr) > 0 else "N/A")
-    with m3:
-        ord_apr_col = st.selectbox("Ordenar por", colunas_ord_op, index=0, key="ord_apr_col")
-    with m4:
-        ord_apr_asc = st.selectbox("Ordem", ["Crescente", "Decrescente"], index=0, key="ord_apr_asc")
-
-    aprofundar_df = aprofundar_df.sort_values(ord_apr_col, ascending=(ord_apr_asc == "Crescente"))
-
-    if len(aprofundar_df) > 0:
-        st.dataframe(
-            aprofundar_df,
-            use_container_width=True,
-            height=600,
-            hide_index=True,
-            column_config={"Link de acesso": st.column_config.LinkColumn("Link", display_text="🔗 Abrir")}
-        )
-    else:
-        st.info("Nenhum imóvel para aprofundar com os filtros atuais.")
-
-    st.divider()
-
-    # --- ACOMPANHAR ---
-    acompanhar_df = df_oportunidades[df_oportunidades['Ação'] == 'acompanhar'].copy()
-
-    preco_aco = acompanhar_df['Preço'].dropna()
-    preco_aco = preco_aco[preco_aco > 0]
-
-    st.subheader(f"Acompanhar ({len(acompanhar_df):,})")
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.metric("Preço Médio", f"R$ {preco_aco.mean():,.0f}" if len(preco_aco) > 0 else "N/A")
-    with m2:
-        st.metric("Preço Máx", f"R$ {preco_aco.max():,.0f}" if len(preco_aco) > 0 else "N/A")
-    with m3:
-        ord_aco_col = st.selectbox("Ordenar por", colunas_ord_op, index=0, key="ord_aco_col")
-    with m4:
-        ord_aco_asc = st.selectbox("Ordem", ["Crescente", "Decrescente"], index=0, key="ord_aco_asc")
-
-    acompanhar_df = acompanhar_df.sort_values(ord_aco_col, ascending=(ord_aco_asc == "Crescente"))
-
-    if len(acompanhar_df) > 0:
-        st.dataframe(
-            acompanhar_df,
-            use_container_width=True,
-            height=600,
-            hide_index=True,
-            column_config={"Link de acesso": st.column_config.LinkColumn("Link", display_text="🔗 Abrir")}
-        )
-    else:
-        st.info("Nenhum imóvel para acompanhar com os filtros atuais.")
 
 # ========== TAB 3: DADOS ==========
 with tab3:
